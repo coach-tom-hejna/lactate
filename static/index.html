@@ -1,0 +1,1486 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LT1 & LT2 – Analýza laktátového testu</title>
+    <link href="https://fonts.cdnfonts.com/css/tt-hoves" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.7.0/jspdf.plugin.autotable.min.js"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        :root {
+            --bg:         #e3e2de;
+            --surface:    #ffffff;
+            --surface2:   #f4f3ef;
+            --border:     #d6d5d0;
+            --border-soft:#e8e7e3;
+            --accent:     #1351aa;
+            --accent-hover:#0e3f87;
+            --lt1:        #1a7f3c;
+            --lt1-bg:     #f0faf3;
+            --lt1-border: #86efac;
+            --lt2:        #c0392b;
+            --lt2-bg:     #fff5f5;
+            --lt2-border: #fca5a5;
+            --text:       #18181b;
+            --text-muted: #71717a;
+            --radius:     10px;
+            --shadow:     0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.05);
+            --shadow-md:  0 4px 12px rgba(0,0,0,0.08), 0 1px 3px rgba(0,0,0,0.05);
+        }
+        html, body { height: 100%; }
+        body {
+            font-family: 'TT Hoves', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+        }
+
+        /* HEADER */
+        .app-header {
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            padding: 0 28px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            height: 58px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: var(--shadow);
+        }
+        .app-logo {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--accent);
+            cursor: pointer;
+            letter-spacing: -0.3px;
+        }
+        .app-header nav { display: flex; gap: 8px; margin-left: auto; align-items: center; }
+        .token-indicator {
+            font-size: 12px; color: var(--text-muted);
+            padding: 4px 10px; background: var(--surface2);
+            border: 1px solid var(--border); border-radius: 20px;
+        }
+
+        /* BUTTONS */
+        .btn {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 8px 18px; border-radius: var(--radius);
+            border: 1px solid transparent; font-size: 14px; font-weight: 500;
+            cursor: pointer; transition: all 0.15s; text-decoration: none; background: none;
+            font-family: inherit;
+        }
+        .btn-primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+        .btn-primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+        .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+        .btn-secondary {
+            background: var(--surface); color: var(--text);
+            border-color: var(--border); box-shadow: var(--shadow);
+        }
+        .btn-secondary:hover { background: var(--surface2); }
+        .btn-danger { background: transparent; color: var(--lt2); border-color: var(--lt2-border); }
+        .btn-danger:hover { background: var(--lt2-bg); }
+        .btn-sm { padding: 5px 12px; font-size: 12px; }
+
+        .container { max-width: 1100px; margin: 0 auto; padding: 28px; }
+        .view { display: none; }
+        .view.active { display: block; }
+
+        /* LOGIN */
+        #view-login {
+            display: flex; align-items: center; justify-content: center;
+            min-height: 100vh; background: var(--bg);
+        }
+        #view-login.active { display: flex; }
+        .login-card {
+            background: var(--surface); border: 1px solid var(--border);
+            border-radius: var(--radius); padding: 40px; width: 360px;
+            box-shadow: var(--shadow-md);
+        }
+        .login-card h1 { font-size: 24px; font-weight: 700; color: var(--accent); margin-bottom: 4px; }
+        .login-card p { font-size: 13px; color: var(--text-muted); margin-bottom: 28px; }
+        .login-card .form-group { margin-bottom: 16px; }
+        .login-error { color: var(--lt2); font-size: 13px; margin-top: 10px; min-height: 18px; }
+
+        /* HOME */
+        .home-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 16px; margin-top: 24px;
+        }
+        .test-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 20px; cursor: pointer;
+            transition: box-shadow 0.15s, border-color 0.15s;
+            box-shadow: var(--shadow);
+        }
+        .test-card:hover { border-color: var(--accent); box-shadow: var(--shadow-md); }
+        .test-card h3 { font-size: 16px; font-weight: 600; margin-bottom: 4px; }
+        .test-card .meta { font-size: 12px; color: var(--text-muted); margin-bottom: 10px; }
+        .sport-badge {
+            display: inline-block; padding: 2px 9px; border-radius: 20px;
+            font-size: 11px; font-weight: 600;
+            background: rgba(19,81,170,0.08); color: var(--accent);
+            margin-bottom: 8px;
+        }
+        .threshold-chips { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+        .chip { padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+        .chip-lt1 { background: var(--lt1-bg); color: var(--lt1); border: 1px solid var(--lt1-border); }
+        .chip-lt2 { background: var(--lt2-bg); color: var(--lt2); border: 1px solid var(--lt2-border); }
+
+        .empty-state { text-align: center; padding: 80px 20px; color: var(--text-muted); }
+        .empty-state h2 { font-size: 20px; margin-bottom: 8px; color: var(--text); font-weight: 600; }
+        .empty-state p { margin-bottom: 24px; }
+        .page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+        .page-title { font-size: 24px; font-weight: 700; letter-spacing: -0.3px; }
+
+        /* FORM */
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        .form-group { margin-bottom: 16px; }
+        .form-group label {
+            display: block; font-size: 13px; font-weight: 500;
+            color: var(--text-muted); margin-bottom: 6px;
+        }
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%; padding: 9px 13px;
+            background: var(--surface); border: 1px solid var(--border);
+            border-radius: var(--radius); color: var(--text); font-size: 14px;
+            outline: none; transition: border-color 0.15s, box-shadow 0.15s;
+            font-family: inherit;
+        }
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(19,81,170,0.12);
+        }
+        .form-group textarea { resize: vertical; min-height: 70px; font-family: inherit; }
+        .form-group select { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2371717a' d='M6 8L1 3h10z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; }
+
+        /* SPORT SELECTOR */
+        .sport-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 4px; }
+        .sport-btn {
+            padding: 12px 8px; border: 1.5px solid var(--border);
+            border-radius: var(--radius); background: var(--surface);
+            color: var(--text-muted); cursor: pointer;
+            text-align: center; font-size: 12px; font-weight: 500;
+            transition: all 0.15s; font-family: inherit;
+            box-shadow: var(--shadow);
+        }
+        .sport-btn .sport-icon { font-size: 22px; display: block; margin-bottom: 5px; }
+        .sport-btn:hover { border-color: var(--accent); color: var(--accent); }
+        .sport-btn.active {
+            border-color: var(--accent); color: var(--accent);
+            background: rgba(19,81,170,0.06);
+            box-shadow: 0 0 0 1px var(--accent);
+        }
+
+        /* STEPS TABLE */
+        .steps-table { width: 100%; border-collapse: collapse; margin-bottom: 12px; }
+        .steps-table th {
+            text-align: left; padding: 9px 10px; font-size: 11px; font-weight: 600;
+            color: var(--text-muted); border-bottom: 1px solid var(--border);
+            white-space: nowrap; text-transform: uppercase; letter-spacing: 0.4px;
+        }
+        .steps-table td { padding: 4px 6px; }
+        .steps-table td input {
+            width: 100%; padding: 7px 10px; background: var(--surface2);
+            border: 1px solid var(--border-soft); border-radius: 7px;
+            color: var(--text); font-size: 14px; outline: none; font-family: inherit;
+            transition: border-color 0.15s;
+        }
+        .steps-table td input:focus { border-color: var(--accent); background: #fff; }
+        .step-num { width: 36px; text-align: center; color: var(--text-muted); font-size: 13px; }
+        .del-btn {
+            width: 30px; height: 30px; border: none; background: transparent;
+            color: var(--text-muted); cursor: pointer; border-radius: 6px; font-size: 18px;
+            display: flex; align-items: center; justify-content: center;
+            transition: all 0.15s;
+        }
+        .del-btn:hover { background: var(--lt2-bg); color: var(--lt2); }
+
+        /* CARD */
+        .card {
+            background: var(--surface); border: 1px solid var(--border);
+            border-radius: var(--radius); padding: 20px; margin-bottom: 16px;
+            box-shadow: var(--shadow);
+        }
+        .card h2 { font-size: 15px; font-weight: 600; margin-bottom: 16px; color: var(--text); }
+
+        /* LAYOUT */
+        .two-col { display: grid; grid-template-columns: 1fr 340px; gap: 20px; align-items: start; }
+
+        /* RESULT CARDS */
+        .result-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+        .result-card {
+            border-radius: var(--radius); padding: 14px; border: 1px solid;
+        }
+        .result-card.lt1 { border-color: var(--lt1-border); background: var(--lt1-bg); }
+        .result-card.lt2 { border-color: var(--lt2-border); background: var(--lt2-bg); }
+        .result-card .label {
+            font-size: 10px; color: var(--text-muted); text-transform: uppercase;
+            letter-spacing: 0.6px; margin-bottom: 5px; font-weight: 600;
+        }
+        .result-card .value { font-size: 22px; font-weight: 700; letter-spacing: -0.5px; }
+        .result-card .sublabel { font-size: 11px; color: var(--text-muted); margin-top: 3px; }
+        .result-card.lt1 .value { color: var(--lt1); }
+        .result-card.lt2 .value { color: var(--lt2); }
+        .export-btns { display: flex; flex-direction: column; gap: 8px; }
+
+        .chart-container { position: relative; height: 380px; }
+        .chart-container-sm { position: relative; height: 260px; }
+
+        .section-title {
+            font-size: 11px; font-weight: 600; color: var(--text-muted);
+            text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px;
+        }
+
+        /* DATA TABLE */
+        .data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .data-table th {
+            text-align: left; padding: 7px 12px; font-size: 11px; font-weight: 600;
+            color: var(--text-muted); border-bottom: 1px solid var(--border);
+            text-transform: uppercase; letter-spacing: 0.4px;
+        }
+        .data-table td { padding: 9px 12px; border-bottom: 1px solid var(--border-soft); }
+        .data-table tr:last-child td { border-bottom: none; }
+        .data-table tr.lt1-row td { color: var(--lt1); font-weight: 600; }
+        .data-table tr.lt2-row td { color: var(--lt2); font-weight: 600; }
+        .step-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 4px; vertical-align: middle; }
+        .step-dot.lt1 { background: var(--lt1); }
+        .step-dot.lt2 { background: var(--lt2); }
+
+        .alert { padding: 10px 14px; border-radius: var(--radius); margin-bottom: 12px; font-size: 13px; }
+        .alert-info { background: rgba(19,81,170,0.06); border: 1px solid rgba(19,81,170,0.2); color: var(--accent); }
+        .alert-warning { background: #fffbeb; border: 1px solid #fcd34d; color: #92400e; }
+        .alert-error { background: var(--lt2-bg); border: 1px solid var(--lt2-border); color: var(--lt2); }
+
+        .breadcrumb { display: flex; align-items: center; gap: 8px; margin-bottom: 20px; font-size: 13px; color: var(--text-muted); }
+        .breadcrumb a { color: var(--accent); text-decoration: none; cursor: pointer; font-weight: 500; }
+        .breadcrumb a:hover { text-decoration: underline; }
+
+        .input-hint { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+
+        /* METHOD TOGGLE */
+        .method-toggle {
+            display: flex; border: 1px solid var(--border);
+            border-radius: var(--radius); overflow: hidden;
+            box-shadow: var(--shadow);
+        }
+        .method-btn {
+            flex: 1; padding: 8px 12px; border: none;
+            background: var(--surface); color: var(--text-muted);
+            cursor: pointer; font-size: 13px; font-weight: 500;
+            transition: all 0.15s; line-height: 1.2; text-align: center;
+            font-family: inherit;
+        }
+        .method-btn + .method-btn { border-left: 1px solid var(--border); }
+        .method-btn.active { background: var(--accent); color: #fff; }
+        .method-btn:hover:not(.active) { background: var(--surface2); color: var(--text); }
+        .method-desc { font-size: 11px; color: var(--text-muted); margin-top: 5px; min-height: 14px; }
+        .methods-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+        /* SPINNER */
+        .spinner {
+            display: inline-block; width: 16px; height: 16px;
+            border: 2px solid rgba(255,255,255,0.4); border-top-color: #fff;
+            border-radius: 50%; animation: spin 0.7s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .loading-overlay {
+            text-align: center; padding: 60px 20px; color: var(--text-muted); font-size: 14px;
+        }
+
+        @media (max-width: 768px) {
+            .two-col { grid-template-columns: 1fr; }
+            .form-grid { grid-template-columns: 1fr; }
+            .sport-grid { grid-template-columns: repeat(2, 1fr); }
+            .result-cards { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+<header class="app-header" id="app-header" style="display:none;">
+    <div class="app-logo" onclick="showView('home')">LT1 &amp; LT2</div>
+    <nav>
+        <span class="token-indicator" id="token-indicator"></span>
+        <button class="btn btn-secondary btn-sm" onclick="logout()">Odhlásit</button>
+        <button class="btn btn-primary" onclick="showNewTestForm()">+ Nový test</button>
+    </nav>
+</header>
+
+<!-- ===== LOGIN ===== -->
+<div id="view-login" class="view active">
+    <div class="login-card">
+        <h1>LT1 &amp; LT2</h1>
+        <p>Zadejte API klíč pro přihlášení.</p>
+        <div class="form-group">
+            <label>API klíč</label>
+            <input type="password" id="login-token" placeholder="Váš Bearer token"
+                onkeydown="if(event.key==='Enter') doLogin()">
+        </div>
+        <button class="btn btn-primary" style="width:100%; justify-content:center;" onclick="doLogin()" id="login-btn">
+            Přihlásit
+        </button>
+        <div class="login-error" id="login-error"></div>
+    </div>
+</div>
+
+<!-- ===== HOME ===== -->
+<div id="view-home" class="view">
+    <div class="container">
+        <div class="page-header">
+            <h1 class="page-title">Testy</h1>
+            <button class="btn btn-primary" onclick="showNewTestForm()">+ Nový test</button>
+        </div>
+        <div id="test-list-container"></div>
+    </div>
+</div>
+
+<!-- ===== FORM ===== -->
+<div id="view-form" class="view">
+    <div class="container">
+        <div class="breadcrumb">
+            <a onclick="showView('home')">Testy</a>
+            <span>/</span>
+            <span id="form-breadcrumb">Nový test</span>
+        </div>
+        <div class="two-col">
+            <div>
+                <div class="card">
+                    <h2>Základní informace</h2>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Jméno sportovce</label>
+                            <input type="text" id="f-athlete" placeholder="Jana Nováková">
+                        </div>
+                        <div class="form-group">
+                            <label>Datum testu</label>
+                            <input type="date" id="f-date">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Název testu</label>
+                        <input type="text" id="f-name" placeholder="npr. Test před sezónou">
+                    </div>
+                    <div class="form-group">
+                        <label>Sport</label>
+                        <div class="sport-grid">
+                            <button class="sport-btn active" data-sport="running" onclick="selectSport('running')">
+                                <span class="sport-icon">🏃</span>Běh
+                            </button>
+                            <button class="sport-btn" data-sport="cycling" onclick="selectSport('cycling')">
+                                <span class="sport-icon">🚴</span>Kolo
+                            </button>
+                            <button class="sport-btn" data-sport="rowing" onclick="selectSport('rowing')">
+                                <span class="sport-icon">🚣</span>Veslování
+                            </button>
+                            <button class="sport-btn" data-sport="skiing" onclick="selectSport('skiing')">
+                                <span class="sport-icon">⛷️</span>Běžky
+                            </button>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Poznámky</label>
+                        <textarea id="f-notes" placeholder="Podmínky testu, zdravotní stav, okolnosti..."></textarea>
+                    </div>
+                </div>
+
+                <!-- METHOD SELECTORS -->
+                <div class="card">
+                    <h2>Metody výpočtu prahů</h2>
+                    <div class="methods-grid">
+                        <div>
+                            <div class="section-title" style="margin-bottom:6px;">LT1 – Aerobní práh</div>
+                            <div class="method-toggle" id="form-lt1-toggle">
+                                <button class="method-btn active" data-method="baseline1" onclick="selectFormMethod('lt1','baseline1')">Baseline +1</button>
+                                <button class="method-btn" data-method="loglog" onclick="selectFormMethod('lt1','loglog')">Log-log</button>
+                            </div>
+                            <div class="method-desc" id="form-lt1-desc">LT1 = bod kde laktát = min. laktát + 1 mmol/L</div>
+                        </div>
+                        <div>
+                            <div class="section-title" style="margin-bottom:6px;">LT2 – Anaerobní práh</div>
+                            <div class="method-toggle" id="form-lt2-toggle">
+                                <button class="method-btn active" data-method="dmax" onclick="selectFormMethod('lt2','dmax')">DMAX</button>
+                                <button class="method-btn" data-method="moddmax" onclick="selectFormMethod('lt2','moddmax')">Mod-DMAX</button>
+                            </div>
+                            <div class="method-desc" id="form-lt2-desc">Max. kolmá vzdálenost od přímky první→poslední bod</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h2>Data testu</h2>
+                    <div id="steps-alert" style="display:none"></div>
+                    <div style="overflow-x:auto;">
+                        <table class="steps-table">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th id="intensity-col-header">Tempo (min:ss/km)</th>
+                                    <th>Laktát (mmol/L)</th>
+                                    <th>TF (bpm)</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody id="steps-body"></tbody>
+                        </table>
+                    </div>
+                    <div id="intensity-hint" class="input-hint">Tempo: zadejte jako 5:30 nebo rychlost v km/h (npr. 12)</div>
+                    <button class="btn btn-secondary btn-sm" style="margin-top:10px;" onclick="addStep()">+ Přidat stupeň</button>
+                </div>
+
+                <div id="form-error" style="display:none;" class="alert alert-error"></div>
+
+                <div style="display:flex; gap:10px; justify-content:flex-end;">
+                    <button class="btn btn-secondary" onclick="showView('home')">Zrušit</button>
+                    <button class="btn btn-primary" id="save-btn" onclick="saveTest()">Uložit test</button>
+                </div>
+            </div>
+
+            <!-- Sticky preview -->
+            <div>
+                <div class="card" style="position:sticky; top:72px;">
+                    <h2>Náhled křivky</h2>
+                    <div class="chart-container-sm">
+                        <canvas id="preview-chart"></canvas>
+                    </div>
+                    <div id="preview-thresholds" style="margin-top:12px; font-size:13px; color:var(--text-muted);">
+                        Zadejte alespoň 3 stupně pro zobrazení.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ===== DETAIL ===== -->
+<div id="view-detail" class="view">
+    <div class="container">
+        <div class="breadcrumb">
+            <a onclick="showView('home')">Testy</a>
+            <span>/</span>
+            <span id="detail-breadcrumb"></span>
+        </div>
+        <div class="two-col">
+            <div>
+                <div class="card">
+                    <div class="chart-container">
+                        <canvas id="detail-chart"></canvas>
+                    </div>
+                </div>
+                <div class="card">
+                    <h2>Naměřená data</h2>
+                    <div style="overflow-x:auto;">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th id="detail-intensity-col">Intenzita</th>
+                                    <th>Laktát (mmol/L)</th>
+                                    <th>TF (bpm)</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody id="detail-steps-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div>
+                <div class="card">
+                    <div class="section-title">Test</div>
+                    <div id="detail-info"></div>
+                </div>
+
+                <div class="card">
+                    <div class="section-title">Metody výpočtu</div>
+                    <div class="methods-grid" style="margin-bottom:12px;">
+                        <div>
+                            <div style="font-size:11px; color:var(--text-muted); margin-bottom:5px;">LT1</div>
+                            <div class="method-toggle" id="detail-lt1-toggle">
+                                <button class="method-btn" data-method="baseline1" onclick="selectDetailMethod('lt1','baseline1')">Baseline +1</button>
+                                <button class="method-btn" data-method="loglog" onclick="selectDetailMethod('lt1','loglog')">Log-log</button>
+                            </div>
+                            <div class="method-desc" id="detail-lt1-desc"></div>
+                        </div>
+                        <div>
+                            <div style="font-size:11px; color:var(--text-muted); margin-bottom:5px;">LT2</div>
+                            <div class="method-toggle" id="detail-lt2-toggle">
+                                <button class="method-btn" data-method="dmax" onclick="selectDetailMethod('lt2','dmax')">DMAX</button>
+                                <button class="method-btn" data-method="moddmax" onclick="selectDetailMethod('lt2','moddmax')">Mod-DMAX</button>
+                            </div>
+                            <div class="method-desc" id="detail-lt2-desc"></div>
+                        </div>
+                    </div>
+                    <button class="btn btn-primary btn-sm" style="width:100%; justify-content:center; margin-bottom:14px;" id="recalc-btn" onclick="recalculateCurrentTest()">↻ Přepočítat prahy</button>
+
+                    <div class="section-title">Výsledky – Prahy</div>
+                    <div class="result-cards">
+                        <div class="result-card lt1">
+                            <div class="label">LT1 – Aerobní práh</div>
+                            <div class="value" id="detail-lt1-intensity">–</div>
+                            <div class="sublabel" id="detail-lt1-lactate"></div>
+                        </div>
+                        <div class="result-card lt2">
+                            <div class="label">LT2 – Anaerobní práh</div>
+                            <div class="value" id="detail-lt2-intensity">–</div>
+                            <div class="sublabel" id="detail-lt2-lactate"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="section-title">Export</div>
+                    <div class="export-btns">
+                        <button class="btn btn-secondary" onclick="exportCSV()">⬇ Stáhnout CSV</button>
+                        <button class="btn btn-secondary" onclick="exportPDF()">⬇ Stáhnout PDF</button>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="section-title">Akce</div>
+                    <div style="display:flex; flex-direction:column; gap:8px;">
+                        <button class="btn btn-secondary" onclick="editCurrentTest()">Upravit test</button>
+                        <button class="btn btn-danger" onclick="deleteCurrentTest()">Smazat test</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// ===== SPORTS CONFIG =====
+const SPORTS = {
+    running: {
+        name: 'Běh', icon: '🏃',
+        colHeader: 'Tempo (min:ss/km)',
+        xLabel: 'Tempo (min:ss/km)',
+        unit: 'min/km', isPace: true,
+        hint: 'Zadejte jako 5:30 nebo v km/h (npr. 12)'
+    },
+    cycling: {
+        name: 'Kolo', icon: '🚴',
+        colHeader: 'Výkon (W)',
+        xLabel: 'Výkon (W)',
+        unit: 'W', isPace: false,
+        hint: 'Zadejte výkon ve wattech'
+    },
+    rowing: {
+        name: 'Veslování', icon: '🚣',
+        colHeader: 'Výkon (W)',
+        xLabel: 'Výkon (W)',
+        unit: 'W', isPace: false,
+        hint: 'Zadejte výkon ve wattech'
+    },
+    skiing: {
+        name: 'Běžky', icon: '⛷️',
+        colHeader: 'Výkon (W)',
+        xLabel: 'Výkon (W)',
+        unit: 'W', isPace: false,
+        hint: 'Zadejte výkon ve wattech'
+    }
+};
+
+// ===== STATE =====
+const state = {
+    tests: [],
+    editingId: null,
+    currentDetailId: null,
+    currentSport: 'running',
+    steps: [],
+    previewChart: null,
+    detailChart: null,
+    lt1Method: 'baseline1',
+    lt2Method: 'dmax',
+    detailLt1Method: 'baseline1',
+    detailLt2Method: 'dmax'
+};
+
+// ===== AUTH / TOKEN =====
+function getToken() {
+    // 1. Check URL param ?token=xxx — store and remove from URL
+    const params = new URLSearchParams(window.location.search);
+    const urlToken = params.get('token');
+    if (urlToken) {
+        sessionStorage.setItem('lt_token', urlToken);
+        params.delete('token');
+        const newUrl = window.location.pathname + (params.toString() ? '?' + params.toString() : '');
+        window.history.replaceState({}, '', newUrl);
+        return urlToken;
+    }
+    return sessionStorage.getItem('lt_token') || '';
+}
+
+function setToken(tok) {
+    sessionStorage.setItem('lt_token', tok.trim());
+}
+
+function logout() {
+    sessionStorage.removeItem('lt_token');
+    document.getElementById('app-header').style.display = 'none';
+    showOnlyView('login');
+}
+
+async function doLogin() {
+    const tok = document.getElementById('login-token').value.trim();
+    if (!tok) { showLoginError('Zadejte API klíč.'); return; }
+
+    const btn = document.getElementById('login-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>';
+
+    try {
+        const res = await fetch('/api/tests', {
+            headers: { 'Authorization': 'Bearer ' + tok }
+        });
+        if (res.status === 401) {
+            showLoginError('Nesprávný API klíč.');
+            btn.disabled = false; btn.textContent = 'Přihlásit';
+            return;
+        }
+        setToken(tok);
+        await initApp();
+    } catch(e) {
+        showLoginError('Chyba připojení k serveru.');
+        btn.disabled = false; btn.textContent = 'Přihlásit';
+    }
+}
+
+function showLoginError(msg) {
+    document.getElementById('login-error').textContent = msg;
+}
+
+// ===== API HELPERS =====
+async function apiFetch(path, opts = {}) {
+    const tok = getToken();
+    const res = await fetch(path, {
+        ...opts,
+        headers: {
+            'Authorization': 'Bearer ' + tok,
+            'Content-Type': 'application/json',
+            ...(opts.headers || {})
+        }
+    });
+    if (res.status === 401) {
+        logout();
+        throw new Error('Unauthorized');
+    }
+    if (res.status === 204) return null;
+    if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.detail || `HTTP ${res.status}`);
+    }
+    return res.json();
+}
+
+async function fetchTests() {
+    const tests = await apiFetch('/api/tests');
+    state.tests = tests || [];
+}
+
+// ===== BOOT =====
+async function initApp() {
+    const tok = getToken();
+    if (!tok) {
+        showOnlyView('login');
+        return;
+    }
+
+    // Quick token verify
+    try {
+        await fetchTests();
+    } catch(e) {
+        if (e.message === 'Unauthorized') return;
+        showOnlyView('login');
+        showLoginError('Chyba připojení.');
+        return;
+    }
+
+    document.getElementById('app-header').style.display = 'flex';
+    const indicator = document.getElementById('token-indicator');
+    indicator.textContent = '🔑 ' + tok.slice(0, 6) + '…';
+
+    showView('home');
+}
+
+// ===== VIEWS =====
+function showOnlyView(name) {
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    document.getElementById(`view-${name}`).classList.add('active');
+}
+
+async function showView(name) {
+    showOnlyView(name);
+    if (name === 'home') await renderHome();
+}
+
+// ===== HOME =====
+async function renderHome() {
+    const container = document.getElementById('test-list-container');
+    container.innerHTML = '<div class="loading-overlay">Načítání testů…</div>';
+    try {
+        await fetchTests();
+    } catch(e) {
+        container.innerHTML = `<div class="alert alert-error">Chyba načítání: ${esc(e.message)}</div>`;
+        return;
+    }
+
+    if (state.tests.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <h2>Žádné testy zatím</h2>
+                <p>Začněte přidáním prvního laktátového testu.</p>
+                <button class="btn btn-primary" onclick="showNewTestForm()">+ Nový test</button>
+            </div>`;
+        return;
+    }
+    container.innerHTML = `<div class="home-grid">${state.tests.map(testCard).join('')}</div>`;
+}
+
+function testCard(test) {
+    const sport = SPORTS[test.sport] || SPORTS.running;
+    const r = test.results || {};
+    const chips = [
+        r.lt1 ? `<span class="chip chip-lt1">LT1: ${formatIntensityShort(r.lt1.intensity, test.sport)} ${sport.unit}</span>` : '',
+        r.lt2 ? `<span class="chip chip-lt2">LT2: ${formatIntensityShort(r.lt2.intensity, test.sport)} ${sport.unit}</span>` : ''
+    ].join('');
+    return `
+        <div class="test-card" onclick="openDetail('${test.id}')">
+            <div class="sport-badge">${sport.icon} ${sport.name}</div>
+            <h3>${esc(test.name)}</h3>
+            <div class="meta">${esc(test.athleteName || 'Neznámý sportovec')} · ${fmtDate(test.date)}</div>
+            <div class="threshold-chips">${chips}</div>
+        </div>`;
+}
+
+// ===== NEW / EDIT FORM =====
+async function showNewTestForm(testId) {
+    state.editingId = testId || null;
+    state.currentSport = 'running';
+    state.steps = [];
+
+    document.getElementById('f-athlete').value = '';
+    document.getElementById('f-date').value = new Date().toISOString().split('T')[0];
+    document.getElementById('f-name').value = '';
+    document.getElementById('f-notes').value = '';
+    document.getElementById('form-breadcrumb').textContent = testId ? 'Upravit test' : 'Nový test';
+    hideFormError();
+
+    if (testId) {
+        let test = state.tests.find(t => t.id === testId);
+        if (!test) {
+            try { test = await apiFetch(`/api/tests/${testId}`); } catch(e) {}
+        }
+        if (test) {
+            document.getElementById('f-athlete').value = test.athleteName || '';
+            document.getElementById('f-date').value = test.date || '';
+            document.getElementById('f-name').value = test.name;
+            document.getElementById('f-notes').value = test.notes || '';
+            state.currentSport = test.sport || 'running';
+            state.lt1Method = test.results?.lt1Method || 'baseline1';
+            state.lt2Method = test.results?.lt2Method || 'dmax';
+            state.steps = test.steps.map(s => ({
+                intensityDisplay: SPORTS[test.sport]?.isPace ? kmhToPace(s.intensity) : String(s.intensity),
+                intensity: s.intensity,
+                lactate: s.lactate,
+                hr: s.hr || ''
+            }));
+        }
+    } else {
+        state.lt1Method = 'baseline1';
+        state.lt2Method = 'dmax';
+        state.steps = Array.from({ length: 6 }, () => ({ intensityDisplay: '', intensity: '', lactate: '', hr: '' }));
+    }
+
+    selectSport(state.currentSport, true);
+    applyFormMethodToggles();
+    renderSteps();
+    showOnlyView('form');
+    setTimeout(() => { initPreviewChart(); updatePreviewChart(); }, 60);
+}
+
+function selectSport(sport, silent) {
+    state.currentSport = sport;
+    document.querySelectorAll('.sport-btn').forEach(b => b.classList.toggle('active', b.dataset.sport === sport));
+    const s = SPORTS[sport];
+    document.getElementById('intensity-col-header').textContent = s.colHeader;
+    document.getElementById('intensity-hint').textContent = s.hint;
+    document.getElementById('intensity-hint').style.display = s.isPace ? 'block' : 'none';
+    if (!silent) updatePreviewChart();
+}
+
+function renderSteps() {
+    const tbody = document.getElementById('steps-body');
+    const sport = SPORTS[state.currentSport];
+    tbody.innerHTML = state.steps.map((s, i) => `
+        <tr>
+            <td class="step-num">${i + 1}</td>
+            <td><input type="text" value="${esc(String(s.intensityDisplay || ''))}"
+                placeholder="${sport.isPace ? '5:30' : '200'}"
+                onchange="updateStep(${i}, 'intensity', this.value)"
+                oninput="updateStep(${i}, 'intensity', this.value)"></td>
+            <td><input type="number" step="0.01" min="0" max="30" value="${s.lactate || ''}"
+                placeholder="1.50"
+                onchange="updateStep(${i}, 'lactate', this.value)"
+                oninput="updateStep(${i}, 'lactate', this.value)"></td>
+            <td><input type="number" min="30" max="250" value="${s.hr || ''}"
+                placeholder="–"
+                onchange="updateStep(${i}, 'hr', this.value)"
+                oninput="updateStep(${i}, 'hr', this.value)"></td>
+            <td><button class="del-btn" onclick="removeStep(${i})" title="Smazat">×</button></td>
+        </tr>
+    `).join('');
+}
+
+function updateStep(i, field, value) {
+    if (field === 'intensity') {
+        state.steps[i].intensityDisplay = value;
+        state.steps[i].intensity = value;
+    } else {
+        state.steps[i][field] = value;
+    }
+    updatePreviewChart();
+}
+
+function addStep() {
+    state.steps.push({ intensityDisplay: '', intensity: '', lactate: '', hr: '' });
+    renderSteps();
+    updatePreviewChart();
+}
+
+function removeStep(i) {
+    if (state.steps.length <= 2) { alert('Minimálně 2 stupně jsou potřeba.'); return; }
+    state.steps.splice(i, 1);
+    renderSteps();
+    updatePreviewChart();
+}
+
+function showFormError(msg) {
+    const el = document.getElementById('form-error');
+    el.textContent = msg; el.style.display = 'block';
+}
+function hideFormError() {
+    document.getElementById('form-error').style.display = 'none';
+}
+
+// ===== SAVE (POST / PUT) =====
+async function saveTest() {
+    hideFormError();
+    const athlete = document.getElementById('f-athlete').value.trim();
+    const date = document.getElementById('f-date').value;
+    const name = document.getElementById('f-name').value.trim();
+    const notes = document.getElementById('f-notes').value.trim();
+
+    if (!name) { showFormError('Zadejte název testu.'); return; }
+    if (!date) { showFormError('Zadejte datum testu.'); return; }
+
+    const validSteps = state.steps
+        .filter(s => s.intensity !== '' && s.lactate !== '')
+        .map(s => ({
+            intensity: parseIntensity(s.intensity, state.currentSport),
+            lactate: parseFloat(s.lactate),
+            hr: s.hr ? parseInt(s.hr) : null
+        }))
+        .filter(s => !isNaN(s.intensity) && !isNaN(s.lactate) && s.intensity > 0 && s.lactate >= 0);
+
+    if (validSteps.length < 3) {
+        showFormError('Zadejte alespoň 3 platné stupně (intenzita + laktát).'); return;
+    }
+
+    const payload = {
+        name,
+        athlete_name: athlete || null,
+        date,
+        sport: state.currentSport,
+        notes: notes || '',
+        steps: validSteps,
+        lt1_method: state.lt1Method,
+        lt2_method: state.lt2Method
+    };
+
+    const btn = document.getElementById('save-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Ukládám…';
+
+    try {
+        let saved;
+        if (state.editingId) {
+            saved = await apiFetch(`/api/tests/${state.editingId}`, {
+                method: 'PUT',
+                body: JSON.stringify(payload)
+            });
+        } else {
+            saved = await apiFetch('/api/tests', {
+                method: 'POST',
+                body: JSON.stringify(payload)
+            });
+        }
+        // Update local cache
+        const idx = state.tests.findIndex(t => t.id === saved.id);
+        if (idx >= 0) state.tests[idx] = saved;
+        else state.tests.unshift(saved);
+
+        openDetail(saved.id);
+    } catch(e) {
+        showFormError('Chyba uložení: ' + e.message);
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Uložit test';
+    }
+}
+
+// ===== THRESHOLD ALGORITHMS (for live preview only) =====
+const METHOD_DESC = {
+    baseline1: 'LT1 = bod kde laktát = min. laktát + 1 mmol/L',
+    loglog:    'Zlom regresních přímek v log-log prostoru',
+    dmax:      'Max. kolmá vzdálenost od přímky 1. → posl. bod',
+    moddmax:   'DMAX od prvního vzestupu laktátu (min+0.5) → konec'
+};
+
+function calculateThresholds(steps, lt1Method, lt2Method) {
+    lt1Method = lt1Method || 'baseline1';
+    lt2Method = lt2Method || 'dmax';
+    if (steps.length < 3) return { lt1Method, lt2Method };
+    const pts = [...steps].sort((a, b) => a.intensity - b.intensity);
+    const lt2 = lt2Method === 'moddmax' ? computeLT2ModDmax(pts) : computeLT2Dmax(pts);
+    const lt1 = lt1Method === 'loglog'  ? computeLT1LogLog(pts)   : computeLT1Baseline1(pts);
+    return { lt1, lt2, lt1Method, lt2Method };
+}
+
+function computeLT1Baseline1(pts) {
+    const minLac = Math.min(...pts.map(p => p.lactate));
+    const threshold = minLac + 1.0;
+    for (let i = 1; i < pts.length; i++) {
+        if (pts[i - 1].lactate <= threshold && pts[i].lactate >= threshold) {
+            const t = (threshold - pts[i - 1].lactate) / (pts[i].lactate - pts[i - 1].lactate);
+            const intensity = pts[i - 1].intensity + t * (pts[i].intensity - pts[i - 1].intensity);
+            let hr = null;
+            if (pts[i - 1].hr && pts[i].hr) hr = Math.round(pts[i - 1].hr + t * (pts[i].hr - pts[i - 1].hr));
+            return { intensity, lactate: threshold, hr, isInterpolated: true };
+        }
+    }
+    return null;
+}
+
+function computeLT1LogLog(pts) {
+    const validPts = pts.filter(p => p.intensity > 0 && p.lactate > 0);
+    if (validPts.length < 4) return null;
+    const logPts = validPts.map(p => ({ x: Math.log(p.intensity), y: Math.log(p.lactate), orig: p }));
+    let minRSS = Infinity, bestI = null;
+    for (let i = 1; i < logPts.length - 1; i++) {
+        const rss = linearRSS(logPts.slice(0, i + 1)) + linearRSS(logPts.slice(i));
+        if (rss < minRSS) { minRSS = rss; bestI = i; }
+    }
+    if (bestI === null) return null;
+    const p = logPts[bestI].orig;
+    return { intensity: p.intensity, lactate: p.lactate, hr: p.hr || null, isInterpolated: false };
+}
+
+function linearRSS(pts) {
+    if (pts.length < 2) return 0;
+    const n = pts.length;
+    const sx  = pts.reduce((s, p) => s + p.x, 0);
+    const sy  = pts.reduce((s, p) => s + p.y, 0);
+    const sxy = pts.reduce((s, p) => s + p.x * p.y, 0);
+    const sx2 = pts.reduce((s, p) => s + p.x * p.x, 0);
+    const d   = n * sx2 - sx * sx;
+    if (Math.abs(d) < 1e-12) return pts.reduce((s, p) => s + (p.y - sy / n) ** 2, 0);
+    const a = (n * sxy - sx * sy) / d;
+    const b = (sy - a * sx) / n;
+    return pts.reduce((s, p) => s + (p.y - (a * p.x + b)) ** 2, 0);
+}
+
+function computeLT2Dmax(pts) {
+    const idx = dmaxIndex(pts, 0, pts.length - 1);
+    if (idx === null) return null;
+    return { intensity: pts[idx].intensity, lactate: pts[idx].lactate, hr: pts[idx].hr || null, isInterpolated: false };
+}
+
+function computeLT2ModDmax(pts) {
+    if (pts.length < 3) return null;
+    const minLac = Math.min(...pts.map(p => p.lactate));
+    const riseThreshold = minLac + 0.5;
+    let startIdx = 0;
+    for (let i = 0; i < pts.length - 2; i++) {
+        if (pts[i].lactate < riseThreshold) startIdx = i;
+        else break;
+    }
+    if (pts.length - startIdx < 3) return computeLT2Dmax(pts);
+    const idx = dmaxIndex(pts, startIdx, pts.length - 1);
+    if (idx === null) return computeLT2Dmax(pts);
+    return { intensity: pts[idx].intensity, lactate: pts[idx].lactate, hr: pts[idx].hr || null, isInterpolated: false };
+}
+
+function dmaxIndex(pts, from, to) {
+    if (to - from < 2) return null;
+    const first = pts[from], last = pts[to];
+    const a = last.lactate - first.lactate;
+    const b = first.intensity - last.intensity;
+    const c = (first.lactate - last.lactate) * first.intensity + (last.intensity - first.intensity) * first.lactate;
+    const denom = Math.sqrt(a * a + b * b);
+    if (denom === 0) return null;
+    let maxDist = -Infinity, maxIdx = null;
+    for (let i = from + 1; i < to; i++) {
+        const dist = (a * pts[i].intensity + b * pts[i].lactate + c) / denom;
+        if (dist > maxDist) { maxDist = dist; maxIdx = i; }
+    }
+    return maxDist > 0.05 ? maxIdx : null;
+}
+
+// ===== CHART HELPERS =====
+function kmhToPace(kmh) {
+    if (!kmh || kmh <= 0) return '–';
+    const totalMin = 60 / kmh;
+    const min = Math.floor(totalMin);
+    const sec = Math.round((totalMin - min) * 60);
+    return `${min}:${String(sec).padStart(2, '0')}`;
+}
+
+function paceToKmh(paceStr) {
+    const str = String(paceStr).trim();
+    if (str.includes(':')) {
+        const parts = str.split(':');
+        const min = parseFloat(parts[0]);
+        const sec = parseFloat(parts[1] || 0);
+        if (isNaN(min) || min <= 0) return NaN;
+        return 60 / (min + sec / 60);
+    }
+    return parseFloat(str);
+}
+
+function parseIntensity(val, sport) {
+    if (val === '' || val === null || val === undefined) return NaN;
+    if (SPORTS[sport]?.isPace) return paceToKmh(val);
+    return parseFloat(val);
+}
+
+function formatIntensity(storedVal, sport) {
+    if (storedVal === null || storedVal === undefined || isNaN(storedVal)) return '–';
+    if (sport === 'running') return `${kmhToPace(storedVal)} min/km`;
+    return `${storedVal} W`;
+}
+
+function formatIntensityShort(storedVal, sport) {
+    if (storedVal === null || storedVal === undefined || isNaN(storedVal)) return '–';
+    if (sport === 'running') return kmhToPace(storedVal);
+    return `${storedVal}`;
+}
+
+function buildDatasets(steps, sport) {
+    const pts = [...steps].sort((a, b) => a.intensity - b.intensity);
+    const datasets = [{
+        label: 'Laktát (mmol/L)',
+        data: pts.map(p => ({ x: p.intensity, y: p.lactate })),
+        borderColor: '#1351aa', backgroundColor: 'rgba(19,81,170,0.08)',
+        borderWidth: 2.5, fill: true, tension: 0.4,
+        pointRadius: 5, pointHoverRadius: 7,
+        pointBackgroundColor: '#1351aa', pointBorderColor: '#fff', pointBorderWidth: 2,
+        yAxisID: 'y'
+    }];
+    const hrPts = pts.filter(p => p.hr && p.hr > 0);
+    if (hrPts.length >= 2) {
+        datasets.push({
+            label: 'TF (bpm)',
+            data: hrPts.map(p => ({ x: p.intensity, y: p.hr })),
+            borderColor: '#c2410c', backgroundColor: 'transparent',
+            borderWidth: 1.5, borderDash: [5, 3], fill: false, tension: 0.3,
+            pointRadius: 3, pointBackgroundColor: '#c2410c', yAxisID: 'y2'
+        });
+    }
+    return { pts, datasets };
+}
+
+function buildAnnotations(results, sport) {
+    const annotations = {};
+    if (!results) return annotations;
+    if (results.lt1) {
+        annotations.lt1Line = {
+            type: 'line', xMin: results.lt1.intensity, xMax: results.lt1.intensity,
+            borderColor: '#1a7f3c', borderWidth: 2, borderDash: [6, 3],
+            label: {
+                display: true, content: `LT1: ${formatIntensityShort(results.lt1.intensity, sport)}`,
+                backgroundColor: 'rgba(26,127,60,0.9)', color: '#fff',
+                font: { size: 11, weight: 'bold' }, position: 'start', yAdjust: 10
+            }
+        };
+    }
+    if (results.lt2) {
+        annotations.lt2Line = {
+            type: 'line', xMin: results.lt2.intensity, xMax: results.lt2.intensity,
+            borderColor: '#c0392b', borderWidth: 2, borderDash: [6, 3],
+            label: {
+                display: true, content: `LT2: ${formatIntensityShort(results.lt2.intensity, sport)}`,
+                backgroundColor: 'rgba(192,57,43,0.9)', color: '#fff',
+                font: { size: 11, weight: 'bold' }, position: 'end', yAdjust: -10
+            }
+        };
+    }
+    return annotations;
+}
+
+function buildChartConfig(steps, results, sport, small) {
+    const { pts, datasets } = buildDatasets(steps, sport);
+    const s = SPORTS[sport] || SPORTS.running;
+    const hasHR = pts.some(p => p.hr && p.hr > 0);
+    const isPace = s.isPace;
+    const xTickCallback = isPace ? v => kmhToPace(v) : v => v;
+    let annotations = {};
+    try { annotations = buildAnnotations(results, sport); } catch(e) {}
+    return {
+        type: 'line',
+        data: { datasets },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+                legend: { display: !small, labels: { color: '#71717a', font: { size: 11, family: "'TT Hoves', sans-serif" }, boxWidth: 20 } },
+                tooltip: {
+                    backgroundColor: '#ffffff', borderColor: '#d6d5d0', borderWidth: 1,
+                    titleColor: '#18181b', bodyColor: '#71717a', padding: 10,
+                    callbacks: { title: items => isPace ? `Tempo: ${kmhToPace(items[0].parsed.x)} min/km` : `Výkon: ${items[0].parsed.x} W` }
+                },
+                annotation: { annotations }
+            },
+            scales: {
+                x: {
+                    type: 'linear',
+                    title: { display: !small, text: s.xLabel, color: '#71717a', font: { size: 12, family: "'TT Hoves', sans-serif" } },
+                    grid: { color: 'rgba(0,0,0,0.06)' }, border: { color: 'rgba(0,0,0,0.1)' },
+                    ticks: { color: '#71717a', font: { family: "'TT Hoves', sans-serif" }, callback: xTickCallback }
+                },
+                y: {
+                    title: { display: !small, text: 'Laktát (mmol/L)', color: '#71717a', font: { size: 12, family: "'TT Hoves', sans-serif" } },
+                    grid: { color: 'rgba(0,0,0,0.06)' }, border: { color: 'rgba(0,0,0,0.1)' },
+                    ticks: { color: '#71717a', font: { family: "'TT Hoves', sans-serif" } }, min: 0
+                },
+                ...(hasHR && !small ? { y2: {
+                    position: 'right',
+                    title: { display: true, text: 'TF (bpm)', color: '#c2410c', font: { size: 12, family: "'TT Hoves', sans-serif" } },
+                    grid: { drawOnChartArea: false }, ticks: { color: '#c2410c' }
+                }} : {})
+            }
+        }
+    };
+}
+
+// ===== PREVIEW CHART =====
+function initPreviewChart() {
+    const canvas = document.getElementById('preview-chart');
+    if (state.previewChart) { state.previewChart.destroy(); state.previewChart = null; }
+    const ctx = canvas.getContext('2d');
+    state.previewChart = new Chart(ctx, {
+        type: 'line',
+        data: { datasets: [] },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { display: false }, annotation: { annotations: {} } },
+            scales: {
+                x: { type: 'linear', grid: { color: 'rgba(0,0,0,0.06)' }, ticks: { color: '#71717a', font: { size: 10 } } },
+                y: { grid: { color: 'rgba(0,0,0,0.06)' }, ticks: { color: '#71717a', font: { size: 10 } }, min: 0 }
+            }
+        }
+    });
+}
+
+function updatePreviewChart() {
+    const validSteps = state.steps
+        .filter(s => s.intensity !== '' && s.lactate !== '')
+        .map(s => ({
+            intensity: parseIntensity(s.intensity, state.currentSport),
+            lactate: parseFloat(s.lactate),
+            hr: s.hr ? parseInt(s.hr) : null
+        }))
+        .filter(s => !isNaN(s.intensity) && !isNaN(s.lactate) && s.intensity > 0 && s.lactate >= 0);
+
+    const threshEl = document.getElementById('preview-thresholds');
+
+    if (validSteps.length < 3) {
+        if (state.previewChart) { state.previewChart.data.datasets = []; state.previewChart.update(); }
+        threshEl.innerHTML = '<span style="color:var(--text-muted)">Zadejte alespoň 3 stupně pro výpočet prahů.</span>';
+        return;
+    }
+
+    const results = calculateThresholds(validSteps, state.lt1Method, state.lt2Method);
+    const config = buildChartConfig(validSteps, results, state.currentSport, true);
+
+    if (state.previewChart) {
+        state.previewChart.data.datasets = config.data.datasets;
+        try { state.previewChart.options.plugins.annotation = config.options.plugins.annotation; } catch(e) {}
+        state.previewChart.options.scales.x.ticks.callback = config.options.scales.x.ticks.callback;
+        state.previewChart.update();
+    }
+
+    const s = SPORTS[state.currentSport];
+    const lt1tag = state.lt1Method === 'baseline1' ? 'baseline+1' : 'log-log';
+    const lt2tag = state.lt2Method === 'dmax'      ? 'DMAX'       : 'Mod-DMAX';
+    threshEl.innerHTML = `<div style="display:flex; gap:10px; flex-wrap:wrap;">
+        ${results.lt1 ? `<span class="chip chip-lt1">LT1 (${lt1tag}): ${formatIntensityShort(results.lt1.intensity, state.currentSport)} ${s.unit} · ${results.lt1.lactate.toFixed(2)} mmol/L</span>` : `<span style="color:var(--text-muted);font-size:12px;">LT1 (${lt1tag}): nelze určit</span>`}
+        ${results.lt2 ? `<span class="chip chip-lt2">LT2 (${lt2tag}): ${formatIntensityShort(results.lt2.intensity, state.currentSport)} ${s.unit} · ${results.lt2.lactate.toFixed(2)} mmol/L</span>` : `<span style="color:var(--text-muted);font-size:12px;">LT2 (${lt2tag}): nelze určit</span>`}
+    </div>`;
+}
+
+// ===== METHOD SELECTORS =====
+function applyFormMethodToggles() {
+    applyToggle('form-lt1-toggle', state.lt1Method);
+    applyToggle('form-lt2-toggle', state.lt2Method);
+    updateFormMethodDesc();
+}
+
+function selectFormMethod(type, method) {
+    if (type === 'lt1') state.lt1Method = method;
+    else state.lt2Method = method;
+    applyToggle(`form-${type}-toggle`, method);
+    updateFormMethodDesc();
+    updatePreviewChart();
+}
+
+function updateFormMethodDesc() {
+    const d1 = document.getElementById('form-lt1-desc');
+    const d2 = document.getElementById('form-lt2-desc');
+    if (d1) d1.textContent = METHOD_DESC[state.lt1Method] || '';
+    if (d2) d2.textContent = METHOD_DESC[state.lt2Method] || '';
+}
+
+function selectDetailMethod(type, method) {
+    if (type === 'lt1') state.detailLt1Method = method;
+    else state.detailLt2Method = method;
+    applyToggle(`detail-${type}-toggle`, method);
+    updateDetailMethodDesc();
+}
+
+function updateDetailMethodDesc() {
+    const d1 = document.getElementById('detail-lt1-desc');
+    const d2 = document.getElementById('detail-lt2-desc');
+    if (d1) d1.textContent = METHOD_DESC[state.detailLt1Method] || '';
+    if (d2) d2.textContent = METHOD_DESC[state.detailLt2Method] || '';
+}
+
+function applyToggle(toggleId, activeMethod) {
+    const el = document.getElementById(toggleId);
+    if (!el) return;
+    el.querySelectorAll('.method-btn').forEach(b => b.classList.toggle('active', b.dataset.method === activeMethod));
+}
+
+async function recalculateCurrentTest() {
+    const btn = document.getElementById('recalc-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>';
+
+    try {
+        const updated = await apiFetch(`/api/tests/${state.currentDetailId}`, {
+            method: 'PUT',
+            body: JSON.stringify({
+                lt1_method: state.detailLt1Method,
+                lt2_method: state.detailLt2Method
+            })
+        });
+        const idx = state.tests.findIndex(t => t.id === updated.id);
+        if (idx >= 0) state.tests[idx] = updated;
+        renderDetail(updated);
+    } catch(e) {
+        alert('Chyba přepočtu: ' + e.message);
+    } finally {
+        btn.disabled = false;
+        btn.textContent = '↻ Přepočítat prahy';
+    }
+}
+
+// ===== DETAIL VIEW =====
+async function openDetail(testId) {
+    state.currentDetailId = testId;
+    let test = state.tests.find(t => t.id === testId);
+    if (!test) {
+        try { test = await apiFetch(`/api/tests/${testId}`); } catch(e) { showView('home'); return; }
+    }
+    renderDetail(test);
+    showOnlyView('detail');
+}
+
+function renderDetail(test) {
+    const sport = SPORTS[test.sport] || SPORTS.running;
+    const r = test.results || {};
+    const pts = [...test.steps].sort((a, b) => a.intensity - b.intensity);
+
+    state.detailLt1Method = r.lt1Method || 'baseline1';
+    state.detailLt2Method = r.lt2Method || 'dmax';
+
+    document.getElementById('detail-breadcrumb').textContent = test.name;
+    document.getElementById('detail-intensity-col').textContent = sport.colHeader;
+
+    applyToggle('detail-lt1-toggle', state.detailLt1Method);
+    applyToggle('detail-lt2-toggle', state.detailLt2Method);
+    updateDetailMethodDesc();
+
+    // Info
+    document.getElementById('detail-info').innerHTML = `
+        <div style="font-size:14px; display:flex; flex-direction:column; gap:8px;">
+            <div><span style="color:var(--text-muted); font-size:12px;">Sportovec</span><br><strong>${esc(test.athleteName || '–')}</strong></div>
+            <div><span style="color:var(--text-muted); font-size:12px;">Datum</span><br><strong>${fmtDate(test.date)}</strong></div>
+            <div><span style="color:var(--text-muted); font-size:12px;">Sport</span><br><strong>${sport.icon} ${sport.name}</strong></div>
+            <div><span style="color:var(--text-muted); font-size:12px;">Zdroj</span><br><strong>${test.source === 'dex' ? '🤖 Dex agent' : '🌐 Web'}</strong></div>
+            ${test.notes ? `<div><span style="color:var(--text-muted); font-size:12px;">Poznámky</span><br>${esc(test.notes)}</div>` : ''}
+        </div>`;
+
+    // Results
+    const lt1El = document.getElementById('detail-lt1-intensity');
+    const lt1Sub = document.getElementById('detail-lt1-lactate');
+    const lt2El = document.getElementById('detail-lt2-intensity');
+    const lt2Sub = document.getElementById('detail-lt2-lactate');
+
+    if (r.lt1) {
+        lt1El.textContent = formatIntensity(r.lt1.intensity, test.sport);
+        lt1Sub.textContent = `${r.lt1.lactate?.toFixed(2)} mmol/L${r.lt1.hr ? ` · ${r.lt1.hr} bpm` : ''}`;
+    } else { lt1El.textContent = '–'; lt1Sub.textContent = 'Nelze určit'; }
+
+    if (r.lt2) {
+        lt2El.textContent = formatIntensity(r.lt2.intensity, test.sport);
+        lt2Sub.textContent = `${r.lt2.lactate?.toFixed(2)} mmol/L${r.lt2.hr ? ` · ${r.lt2.hr} bpm` : ''}`;
+    } else { lt2El.textContent = '–'; lt2Sub.textContent = 'Nelze určit'; }
+
+    // Steps table
+    const lt1Idx = r.lt1 && !r.lt1.isInterpolated ? pts.findIndex(p => p.intensity === r.lt1.intensity) : -1;
+    const lt2Idx = r.lt2 && !r.lt2.isInterpolated ? pts.findIndex(p => p.intensity === r.lt2.intensity) : -1;
+
+    document.getElementById('detail-steps-body').innerHTML = pts.map((p, i) => {
+        const isLt1 = (i === lt1Idx);
+        const isLt2 = (i === lt2Idx);
+        const cls = isLt1 ? 'lt1-row' : isLt2 ? 'lt2-row' : '';
+        const dot = isLt1 ? '<span class="step-dot lt1"></span>' : isLt2 ? '<span class="step-dot lt2"></span>' : '';
+        return `<tr class="${cls}">
+            <td>${i + 1}</td>
+            <td>${dot}${formatIntensityShort(p.intensity, test.sport)}</td>
+            <td>${p.lactate.toFixed(2)}</td>
+            <td>${p.hr || '–'}</td>
+            <td>${isLt1 ? '<span class="chip chip-lt1">LT1</span>' : isLt2 ? '<span class="chip chip-lt2">LT2</span>' : ''}</td>
+        </tr>`;
+    }).join('');
+
+    // Interpolated LT1 row
+    if (r.lt1?.isInterpolated) {
+        const tbody = document.getElementById('detail-steps-body');
+        const interRow = document.createElement('tr');
+        interRow.className = 'lt1-row';
+        interRow.innerHTML = `
+            <td style="color:var(--text-muted)">~</td>
+            <td><span class="step-dot lt1"></span>${formatIntensityShort(r.lt1.intensity, test.sport)} <em style="font-size:10px;">(interp.)</em></td>
+            <td>${r.lt1.lactate.toFixed(2)}</td>
+            <td>${r.lt1.hr || '–'}</td>
+            <td><span class="chip chip-lt1">LT1</span></td>`;
+        tbody.appendChild(interRow);
+    }
+
+    // Chart
+    if (state.detailChart) { state.detailChart.destroy(); state.detailChart = null; }
+    const canvas = document.getElementById('detail-chart');
+    const ctx = canvas.getContext('2d');
+    const config = buildChartConfig(pts, r, test.sport, false);
+    state.detailChart = new Chart(ctx, config);
+}
+
+// ===== EDIT / DELETE =====
+function editCurrentTest() {
+    showNewTestForm(state.currentDetailId);
+}
+
+async function deleteCurrentTest() {
+    if (!confirm('Opravdu smazat tento test?')) return;
+    try {
+        await apiFetch(`/api/tests/${state.currentDetailId}`, { method: 'DELETE' });
+        state.tests = state.tests.filter(t => t.id !== state.currentDetailId);
+        showView('home');
+    } catch(e) {
+        alert('Chyba při mazání: ' + e.message);
+    }
+}
+
+// ===== EXPORT =====
+function exportCSV() {
+    const test = state.tests.find(t => t.id === state.currentDetailId);
+    if (!test) return;
+    const sport = SPORTS[test.sport] || SPORTS.running;
+    const r = test.results || {};
+    const pts = [...test.steps].sort((a, b) => a.intensity - b.intensity);
+
+    let csv = `Název,${test.name}\nSportovec,${test.athleteName || ''}\nDatum,${test.date || ''}\nSport,${sport.name}\n`;
+    if (r.lt1) csv += `LT1 (${r.lt1Method}),${formatIntensity(r.lt1.intensity, test.sport)},${r.lt1.lactate.toFixed(2)} mmol/L\n`;
+    if (r.lt2) csv += `LT2 (${r.lt2Method}),${formatIntensity(r.lt2.intensity, test.sport)},${r.lt2.lactate.toFixed(2)} mmol/L\n`;
+    csv += `\n#,${sport.colHeader},Laktát (mmol/L),TF (bpm)\n`;
+    pts.forEach((p, i) => {
+        csv += `${i + 1},${formatIntensityShort(p.intensity, test.sport)},${p.lactate.toFixed(2)},${p.hr || ''}\n`;
+    });
+
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url;
+    a.download = `${test.name.replace(/\s+/g, '_')}_laktat.csv`;
+    a.click(); URL.revokeObjectURL(url);
+}
+
+function exportPDF() {
+    const test = state.tests.find(t => t.id === state.currentDetailId);
+    if (!test) return;
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    const sport = SPORTS[test.sport] || SPORTS.running;
+    const r = test.results || {};
+    const pts = [...test.steps].sort((a, b) => a.intensity - b.intensity);
+
+    doc.setFontSize(18); doc.setTextColor(19, 81, 170);
+    doc.text('LT1 & LT2 – Laktátový test', 14, 18);
+    doc.setFontSize(11); doc.setTextColor(60, 60, 60);
+    doc.text(`${test.name}`, 14, 28);
+    doc.setFontSize(10); doc.setTextColor(100, 100, 100);
+    doc.text(`Sportovec: ${test.athleteName || '–'}   Datum: ${test.date || '–'}   Sport: ${sport.name}`, 14, 36);
+
+    let y = 46;
+    if (r.lt1 || r.lt2) {
+        doc.setFontSize(11); doc.setTextColor(30, 30, 30);
+        doc.text('Výsledky', 14, y); y += 7;
+        if (r.lt1) { doc.setTextColor(26, 127, 60); doc.text(`LT1 (${r.lt1Method}): ${formatIntensity(r.lt1.intensity, test.sport)} · ${r.lt1.lactate.toFixed(2)} mmol/L`, 14, y); y += 6; }
+        if (r.lt2) { doc.setTextColor(192, 57, 43); doc.text(`LT2 (${r.lt2Method}): ${formatIntensity(r.lt2.intensity, test.sport)} · ${r.lt2.lactate.toFixed(2)} mmol/L`, 14, y); y += 6; }
+        y += 4;
+    }
+
+    doc.autoTable({
+        startY: y,
+        head: [['#', sport.colHeader, 'Laktát (mmol/L)', 'TF (bpm)']],
+        body: pts.map((p, i) => [i + 1, formatIntensityShort(p.intensity, test.sport), p.lactate.toFixed(2), p.hr || '–']),
+        styles: { font: 'helvetica', fontSize: 10 },
+        headStyles: { fillColor: [19, 81, 170] }
+    });
+
+    if (test.notes) {
+        const finalY = doc.lastAutoTable.finalY + 8;
+        doc.setFontSize(10); doc.setTextColor(100);
+        doc.text(`Poznámky: ${test.notes}`, 14, finalY);
+    }
+
+    doc.save(`${test.name.replace(/\s+/g, '_')}_laktat.pdf`);
+}
+
+// ===== UTILS =====
+function esc(str) {
+    return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function fmtDate(d) {
+    if (!d) return '–';
+    try {
+        return new Date(d).toLocaleDateString('cs-CZ', { day: 'numeric', month: 'long', year: 'numeric' });
+    } catch(e) { return d; }
+}
+
+// ===== BOOT =====
+window.addEventListener('DOMContentLoaded', initApp);
+</script>
+</body>
+</html>
