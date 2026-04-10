@@ -10,13 +10,8 @@ from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
-from sqlalchemy.orm import Session
-
-import models
 from algorithms import calculate_thresholds, pace_to_kmh
 from auth import verify_token
-from database import Base, engine, get_db
-from models import Test, new_id
 from schemas import (
     DexSubmit,
     HealthResponse,
@@ -27,7 +22,6 @@ from schemas import (
 
 # ── Bootstrap ─────────────────────────────────────────────────────────────────
 
-# Base.metadata.create_all(bind=engine)  # ← disabled for Vercel (stateless)
 
 app = FastAPI(
     title="LT1 & LT2 API",
