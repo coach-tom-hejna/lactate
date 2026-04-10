@@ -27,7 +27,7 @@ from schemas import (
 
 # ── Bootstrap ─────────────────────────────────────────────────────────────────
 
-Base.metadata.create_all(bind=engine)
+# Base.metadata.create_all(bind=engine)  # ← disabled for Vercel (stateless)
 
 app = FastAPI(
     title="LT1 & LT2 API",
