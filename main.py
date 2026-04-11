@@ -1,5 +1,5 @@
 """
-LT1 & LT2 — FastAPI backend
+LT1 & LT2 — FastAPI backend (stateless, no database)
 """
 from __future__ import annotations
 
@@ -10,6 +10,7 @@ from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
+
 from algorithms import calculate_thresholds, pace_to_kmh
 from auth import verify_token
 from schemas import (
@@ -20,8 +21,7 @@ from schemas import (
     TestUpdate,
 )
 
-# ── Bootstrap ─────────────────────────────────────────────────────────────────
-
+# ── App ───────────────────────────────────────────────────────────────────────
 
 app = FastAPI(
     title="LT1 & LT2 API",
@@ -56,29 +56,19 @@ async def health():
     return HealthResponse()
 
 
-# ── Tests CRUD ────────────────────────────────────────────────────────────────
-
-@app.get("/api/tests", response_model=List[TestResponse], tags=["tests"])
-async def list_tests(
-    db: Session = Depends(get_db),
-    _: str = Depends(verify_token),
-):
-    """Return all tests, newest first."""
-    return db.query(Test).order_by(Test.created_at.desc()).all()
-
+# ── Calculate (stateless) ─────────────────────────────────────────────────────
 
 @app.post("/api/tests", response_model=TestResponse, status_code=201, tags=["tests"])
 async def create_test(
     payload: TestCreate,
-    db: Session = Depends(get_db),
     _: str = Depends(verify_token),
 ):
-    """Create a new test (from the web UI)."""
+    """Calculate thresholds and return result (stateless — not persisted)."""
     steps = _normalise_steps(payload.steps, payload.sport)
     results = calculate_thresholds(steps, payload.lt1_method or "baseline1", payload.lt2_method or "dmax")
 
-    test = Test(
-        id=new_id(),
+    return TestResponse(
+        id=_new_id(),
         name=payload.name,
         athlete_name=payload.athlete_name,
         date=payload.date,
@@ -87,65 +77,45 @@ async def create_test(
         steps=steps,
         results=results,
         source="web",
+        created_at=_now(),
+        updated_at=_now(),
     )
-    db.add(test)
-    db.commit()
-    db.refresh(test)
-    return test
+
+
+@app.get("/api/tests", response_model=List[TestResponse], tags=["tests"])
+async def list_tests(
+    _: str = Depends(verify_token),
+):
+    """No database — always returns empty list."""
+    return []
 
 
 @app.get("/api/tests/{test_id}", response_model=TestResponse, tags=["tests"])
 async def get_test(
     test_id: str,
-    db: Session = Depends(get_db),
     _: str = Depends(verify_token),
 ):
-    test = _get_or_404(db, test_id)
-    return test
+    """No database — always 404."""
+    raise HTTPException(status_code=404, detail=f"Test '{test_id}' not found.")
 
 
 @app.put("/api/tests/{test_id}", response_model=TestResponse, tags=["tests"])
 async def update_test(
     test_id: str,
     payload: TestUpdate,
-    db: Session = Depends(get_db),
     _: str = Depends(verify_token),
 ):
-    """Update an existing test. Recalculates thresholds when steps or methods change."""
-    test = _get_or_404(db, test_id)
-
-    if payload.name         is not None: test.name         = payload.name
-    if payload.athlete_name is not None: test.athlete_name = payload.athlete_name
-    if payload.date         is not None: test.date         = payload.date
-    if payload.sport        is not None: test.sport        = payload.sport
-    if payload.notes        is not None: test.notes        = payload.notes
-
-    # Re-calculate if steps or methods changed
-    steps_changed   = payload.steps      is not None
-    methods_changed = payload.lt1_method is not None or payload.lt2_method is not None
-
-    if steps_changed:
-        test.steps = _normalise_steps(payload.steps, test.sport)
-
-    if steps_changed or methods_changed:
-        lt1m = payload.lt1_method or (test.results or {}).get("lt1Method", "baseline1")
-        lt2m = payload.lt2_method or (test.results or {}).get("lt2Method", "dmax")
-        test.results = calculate_thresholds(test.steps, lt1m, lt2m)
-
-    db.commit()
-    db.refresh(test)
-    return test
+    """No database — always 404."""
+    raise HTTPException(status_code=404, detail=f"Test '{test_id}' not found.")
 
 
 @app.delete("/api/tests/{test_id}", status_code=204, tags=["tests"])
 async def delete_test(
     test_id: str,
-    db: Session = Depends(get_db),
     _: str = Depends(verify_token),
 ):
-    test = _get_or_404(db, test_id)
-    db.delete(test)
-    db.commit()
+    """No database — always 404."""
+    raise HTTPException(status_code=404, detail=f"Test '{test_id}' not found.")
 
 
 # ── Dex agent endpoint ────────────────────────────────────────────────────────
@@ -153,11 +123,11 @@ async def delete_test(
 @app.post("/api/dex/submit", response_model=TestResponse, status_code=201, tags=["dex"])
 async def dex_submit(
     payload: DexSubmit,
-    db: Session = Depends(get_db),
     _: str = Depends(verify_token),
 ):
     """
     Submit a lactate test from the Dex agent.
+    Calculates and returns thresholds (stateless — not persisted).
 
     Running pace can be sent as a string ("5:30") or as km/h (float).
     All other sports use watts (float).
@@ -189,8 +159,8 @@ async def dex_submit(
         payload.lt2_method or "dmax",
     )
 
-    test = Test(
-        id=new_id(),
+    return TestResponse(
+        id=_new_id(),
         name=payload.name,
         athlete_name=payload.athlete_name,
         date=payload.date,
@@ -199,20 +169,23 @@ async def dex_submit(
         steps=steps,
         results=results,
         source="dex",
+        created_at=_now(),
+        updated_at=_now(),
     )
-    db.add(test)
-    db.commit()
-    db.refresh(test)
-    return test
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
-def _get_or_404(db: Session, test_id: str) -> Test:
-    test = db.query(Test).filter(Test.id == test_id).first()
-    if not test:
-        raise HTTPException(status_code=404, detail=f"Test '{test_id}' not found.")
-    return test
+import uuid
+from datetime import datetime, timezone
+
+
+def _now() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+def _new_id() -> str:
+    return uuid.uuid4().hex[:12]
 
 
 def _normalise_steps(steps, sport: str) -> List[dict]:
