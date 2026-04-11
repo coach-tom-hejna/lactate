@@ -35,6 +35,11 @@ async def health():
     return HealthResponse()
 
 
+@app.get("/api/tests", response_model=List[TestResponse], tags=["tests"])
+async def list_tests(_: str = Depends(verify_token)):
+    return []
+
+
 @app.post("/api/tests", response_model=TestResponse, status_code=201, tags=["tests"])
 async def create_test(payload: TestCreate, _: str = Depends(verify_token)):
     steps = _normalise(payload.steps, payload.sport)
