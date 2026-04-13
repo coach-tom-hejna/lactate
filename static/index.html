@@ -91,22 +91,6 @@
         .view { display: none; }
         .view.active { display: block; }
 
-        /* LOGIN */
-        #view-login {
-            display: flex; align-items: center; justify-content: center;
-            min-height: 100vh; background: var(--bg);
-        }
-        #view-login.active { display: flex; }
-        .login-card {
-            background: var(--surface); border: 1px solid var(--border);
-            border-radius: var(--radius); padding: 40px; width: 360px;
-            box-shadow: var(--shadow-md);
-        }
-        .login-card h1 { font-size: 24px; font-weight: 700; color: var(--accent); margin-bottom: 4px; }
-        .login-card p { font-size: 13px; color: var(--text-muted); margin-bottom: 28px; }
-        .login-card .form-group { margin-bottom: 16px; }
-        .login-error { color: var(--lt2); font-size: 13px; margin-top: 10px; min-height: 18px; }
-
         /* HOME */
         .home-grid {
             display: grid;
@@ -306,34 +290,15 @@
 </head>
 <body>
 
-<header class="app-header" id="app-header" style="display:none;">
+<header class="app-header">
     <div class="app-logo" onclick="showView('home')">LT1 &amp; LT2</div>
     <nav>
-        <span class="token-indicator" id="token-indicator"></span>
-        <button class="btn btn-secondary btn-sm" onclick="logout()">Odhlásit</button>
         <button class="btn btn-primary" onclick="showNewTestForm()">+ Nový test</button>
     </nav>
 </header>
 
-<!-- ===== LOGIN ===== -->
-<div id="view-login" class="view active">
-    <div class="login-card">
-        <h1>LT1 &amp; LT2</h1>
-        <p>Zadejte API klíč pro přihlášení.</p>
-        <div class="form-group">
-            <label>API klíč</label>
-            <input type="password" id="login-token" placeholder="Váš Bearer token"
-                onkeydown="if(event.key==='Enter') doLogin()">
-        </div>
-        <button class="btn btn-primary" style="width:100%; justify-content:center;" onclick="doLogin()" id="login-btn">
-            Přihlásit
-        </button>
-        <div class="login-error" id="login-error"></div>
-    </div>
-</div>
-
 <!-- ===== HOME ===== -->
-<div id="view-home" class="view">
+<div id="view-home" class="view active">
     <div class="container">
         <div class="page-header">
             <h1 class="page-title">Testy</h1>
@@ -605,75 +570,12 @@ const state = {
     detailLt2Method: 'dmax'
 };
 
-// ===== AUTH / TOKEN =====
-function getToken() {
-    // 1. Check URL param ?token=xxx — store and remove from URL
-    const params = new URLSearchParams(window.location.search);
-    const urlToken = params.get('token');
-    if (urlToken) {
-        sessionStorage.setItem('lt_token', urlToken);
-        params.delete('token');
-        const newUrl = window.location.pathname + (params.toString() ? '?' + params.toString() : '');
-        window.history.replaceState({}, '', newUrl);
-        return urlToken;
-    }
-    return sessionStorage.getItem('lt_token') || '';
-}
-
-function setToken(tok) {
-    sessionStorage.setItem('lt_token', tok.trim());
-}
-
-function logout() {
-    sessionStorage.removeItem('lt_token');
-    document.getElementById('app-header').style.display = 'none';
-    showOnlyView('login');
-}
-
-async function doLogin() {
-    const tok = document.getElementById('login-token').value.trim();
-    if (!tok) { showLoginError('Zadejte API klíč.'); return; }
-
-    const btn = document.getElementById('login-btn');
-    btn.disabled = true;
-    btn.innerHTML = '<span class="spinner"></span>';
-
-    try {
-        const res = await fetch('/api/tests', {
-            headers: { 'Authorization': 'Bearer ' + tok }
-        });
-        if (res.status === 401) {
-            showLoginError('Nesprávný API klíč.');
-            btn.disabled = false; btn.textContent = 'Přihlásit';
-            return;
-        }
-        setToken(tok);
-        await initApp();
-    } catch(e) {
-        showLoginError('Chyba připojení k serveru.');
-        btn.disabled = false; btn.textContent = 'Přihlásit';
-    }
-}
-
-function showLoginError(msg) {
-    document.getElementById('login-error').textContent = msg;
-}
-
 // ===== API HELPERS =====
 async function apiFetch(path, opts = {}) {
-    const tok = getToken();
     const res = await fetch(path, {
         ...opts,
-        headers: {
-            'Authorization': 'Bearer ' + tok,
-            'Content-Type': 'application/json',
-            ...(opts.headers || {})
-        }
+        headers: { 'Content-Type': 'application/json', ...(opts.headers || {}) }
     });
-    if (res.status === 401) {
-        logout();
-        throw new Error('Unauthorized');
-    }
     if (res.status === 204) return null;
     if (!res.ok) {
         const body = await res.json().catch(() => ({}));
@@ -689,37 +591,13 @@ async function fetchTests() {
 
 // ===== BOOT =====
 async function initApp() {
-    const tok = getToken();
-    if (!tok) {
-        showOnlyView('login');
-        return;
-    }
-
-    // Quick token verify
-    try {
-        await fetchTests();
-    } catch(e) {
-        if (e.message === 'Unauthorized') return;
-        showOnlyView('login');
-        showLoginError('Chyba připojení.');
-        return;
-    }
-
-    document.getElementById('app-header').style.display = 'flex';
-    const indicator = document.getElementById('token-indicator');
-    indicator.textContent = '🔑 ' + tok.slice(0, 6) + '…';
-
-    showView('home');
+    await showView('home');
 }
 
 // ===== VIEWS =====
-function showOnlyView(name) {
+async function showView(name) {
     document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
     document.getElementById(`view-${name}`).classList.add('active');
-}
-
-async function showView(name) {
-    showOnlyView(name);
     if (name === 'home') await renderHome();
 }
 
@@ -804,7 +682,7 @@ async function showNewTestForm(testId) {
     selectSport(state.currentSport, true);
     applyFormMethodToggles();
     renderSteps();
-    showOnlyView('form');
+    showView('form');
     setTimeout(() => { initPreviewChart(); updatePreviewChart(); }, 60);
 }
 
@@ -1302,7 +1180,7 @@ async function openDetail(testId) {
         try { test = await apiFetch(`/api/tests/${testId}`); } catch(e) { showView('home'); return; }
     }
     renderDetail(test);
-    showOnlyView('detail');
+    showView('detail');
 }
 
 function renderDetail(test) {

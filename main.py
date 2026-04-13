@@ -1,5 +1,5 @@
 """
-LT1 & LT2 — FastAPI backend (stateless, no database)
+LT1 & LT2 — FastAPI backend (stateless, no auth, no database)
 """
 from __future__ import annotations
 
@@ -8,13 +8,12 @@ import uuid
 from datetime import datetime, timezone
 from typing import List
 
-from fastapi import Depends, FastAPI
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from algorithms import calculate_thresholds, pace_to_kmh
-from auth import verify_token
 from schemas import DexSubmit, HealthResponse, TestCreate, TestResponse
 
 app = FastAPI(title="LT1 & LT2 API", version="1.0.0")
@@ -36,19 +35,19 @@ async def health():
 
 
 @app.get("/api/tests", response_model=List[TestResponse], tags=["tests"])
-async def list_tests(_: str = Depends(verify_token)):
+async def list_tests():
     return []
 
 
 @app.post("/api/tests", response_model=TestResponse, status_code=201, tags=["tests"])
-async def create_test(payload: TestCreate, _: str = Depends(verify_token)):
+async def create_test(payload: TestCreate):
     steps = _normalise(payload.steps, payload.sport)
     results = calculate_thresholds(steps, payload.lt1_method or "baseline1", payload.lt2_method or "dmax")
     return _build_response(payload, steps, results, source="web")
 
 
 @app.post("/api/dex/submit", response_model=TestResponse, status_code=201, tags=["dex"])
-async def dex_submit(payload: DexSubmit, _: str = Depends(verify_token)):
+async def dex_submit(payload: DexSubmit):
     steps = _normalise(payload.steps, payload.sport)
     results = calculate_thresholds(steps, payload.lt1_method or "baseline1", payload.lt2_method or "dmax")
     return _build_response(payload, steps, results, source="dex")
