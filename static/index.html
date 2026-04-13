@@ -830,7 +830,11 @@ function calculateThresholds(steps, lt1Method, lt2Method) {
     if (steps.length < 3) return { lt1Method, lt2Method };
     const pts = [...steps].sort((a, b) => a.intensity - b.intensity);
     const lt2 = lt2Method === 'moddmax' ? computeLT2ModDmax(pts) : computeLT2Dmax(pts);
-    const lt1 = lt1Method === 'loglog'  ? computeLT1LogLog(pts)   : computeLT1Baseline1(pts);
+    let lt1   = lt1Method === 'loglog'  ? computeLT1LogLog(pts)   : computeLT1Baseline1(pts);
+    // Physiological sanity check: LT1 must be strictly below LT2
+    if (lt1 && lt2 && lt1.intensity >= lt2.intensity) {
+        lt1 = null;
+    }
     return { lt1, lt2, lt1Method, lt2Method };
 }
 

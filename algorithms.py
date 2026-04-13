@@ -20,6 +20,10 @@ def calculate_thresholds(
     lt2 = compute_lt2_moddmax(pts) if lt2_method == "moddmax" else compute_lt2_dmax(pts)
     lt1 = compute_lt1_loglog(pts) if lt1_method == "loglog" else compute_lt1_baseline1(pts)
 
+    # Physiological sanity check: LT1 must be strictly below LT2
+    if lt1 and lt2 and lt1["intensity"] >= lt2["intensity"]:
+        lt1 = None
+
     return {"lt1": lt1, "lt2": lt2, "lt1Method": lt1_method, "lt2Method": lt2_method}
 
 
